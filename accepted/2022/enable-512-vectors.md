@@ -6,9 +6,9 @@
 
 This is problematic for a number of reasons:
 
-  1. As new SIMD ISAs release, .NET developers must write additional SIMD code paths *per optimized library*, increasing code complexity and maintainence burden. At best, much time has to be dedicated to these libraires; At worst, libraries do not get upgraded for latest hardware advancements.
+  1. As new SIMD ISAs are released, .NET developers [Gabe: do we need to make a distinction here between app/library/runtime developers?] must write additional SIMD code paths *per optimized library*, increasing code complexity and maintainence burden. At best, much time has to be dedicated to these libraires; At worst, libraries do not get upgraded for latest hardware advancements.
 
-  2. Hand-optimized intrinsics lock software into a specific ISA, often with fixed thresholds for determining when to select a SIMD accelerated codepath for performance gains. In a JIT environment where we can glean performance characteristics of the underlying platform, intrinsics prevent adapting to the most _performant_ SIMD ISA available for a given _workload_.
+  2. Hand-optimized intrinsics lock software into a specific ISA, often with fixed thresholds [I'd say here "fixed logic", as presumably the selection procedure may be more elaborate than just checking for a number] for determining when to select a SIMD accelerated codepath for performance gains. In a JIT environment where we can glean [Nitpick: is "glean" too soft a word?  At the time the JIT kicks in, it should have full knowledge of the hardware it's running on, no?] performance characteristics of the underlying platform, intrinsics prevent adapting to the most _performant_ SIMD ISA available for a given _workload_.
 
 In this design document, we propose to extend `Vector<T>` to serve as a vessel for frictionless SIMD adoption, both internal to .NET libraries, and to external .NET developers. As a realization of this goal, we propose the following:
 
@@ -22,7 +22,7 @@ In this design document, we propose to extend `Vector<T>` to serve as a vessel f
 
 ### `Vector<T>` as an SIMD optimization template
 
-The following code snippet --- taken from the fallback optimization path of UTF16 to ASCII narrowing --- posses problems as the _sole_ SIMD optimization pathway in the ASCIIUtility library. Namely, the check on whether we should vectorize or not will create different performance characteristics depending upon the size the JIT chooses for `Vector<T>`. If `Vector256` is choosen, then buffers with 64 elements and above will be optimized; if `Vector128` is chosen, then buffers of 32 elements and above will be optimized. 
+The following code snippet --- taken from the fallback optimization path of UTF16 to ASCII narrowing --- poses problems as the _sole_ SIMD optimization pathway in the ASCIIUtility library. Namely, the check on whether we should vectorize or not will create different performance characteristics depending upon the size the JIT chooses for `Vector<T>`. If `Vector256` is choosen, then buffers with 64 elements and above will be optimized; if `Vector128` is chosen, then buffers of 32 elements and above will be optimized. 
 
 
 ```C#
@@ -58,7 +58,7 @@ if (elementCount >= 2 * SizeOfVector)
 }
 ```
 
-This prevents `Vector<T>` from consistent behavior both internal to .NET libraries and for external .NET developers. Partciularly with the addition of `Vector512`, workloads that previously would have been optimized would no longer clear the threshold. To aid `Vector<T>` is a single generic SIMD framework, we propose to add a `Vectorize` intrinsic that instructs the JIT to generate _multiple_ SIMD acceleration pathways. 
+This prevents `Vector<T>` from consistent behavior both internal to .NET libraries and for external .NET developers [I have trouble parsing this... is the inconsistency between the libraries or between library and user code (or both)?]. Particularly with the addition of `Vector512`, workloads that previously would have been optimized would no longer clear the threshold [Should we emphasize this problem?  I mean, "not clearing the threshold" means that the addition of wider vectors would cause previously optimized code to fallback to a less performant variant?]. To aid `Vector<T>` is [should this be "as"?] a single generic SIMD framework, we propose to add a `Vectorize` intrinsic that instructs the JIT to generate _multiple_ SIMD acceleration pathways. 
 
 For example, in the following snippet:
 
@@ -180,7 +180,7 @@ which will handle the necessary reduction per platform.
 
 ### Vector512<T> Usage
 
-Exhisting code that utilizes `Vector256<T>` to perform vectorized sum over a span might look something like the following snippet, where `ReduceVector256<T>` is a method that elides the details of a sum reduction of the elements in the vector:
+Existing code that utilizes `Vector256<T>` to perform vectorized sum over a span might look something like the following snippet, where `ReduceVector256<T>` is a method that elides the details of a sum reduction of the elements in the vector:
 
 ```C#
 public int SumVector256T(ReadOnlySpan<int> source)
@@ -244,7 +244,7 @@ We expect developers who manually write `Vector128<T>` and `Vector256<T>` code t
 
 3. `Vector512<T>` should expose at a minimum the same API operations that `Vector128<T>` and `Vector256<T>` expose.
 
-4. `Vector<T>` API surface should include sufficiently expressive methods to reach the first goal above. This may incldue 
+4. `Vector<T>` API surface should include sufficiently expressive methods to reach the first goal above. This may include 
 
 ### Non-Goals
 
